@@ -489,21 +489,41 @@
                 setFile(selectedFile);
                 setError('');
 
+                // Parse CSV using PapaParse
                 Papa.parse(selectedFile, {
                     header: true,
                     skipEmptyLines: true,
+                    transformHeader: (h) => h.trim(), // ช่วยตัดช่องว่างหัว-ท้ายชื่อคอลัมน์ออก
                     complete: (results) => {
                         if (results.data && results.data.length > 0) {
-                            if (!results.data[0].hasOwnProperty('Article#')) {
-                                setError('Invalid file format. Please ensure "Article#" column exists.');
+                            // ดึงรายชื่อหัวคอลัมน์ทั้งหมดออกมาตรวจสอบ
+                            const headers = results.meta.fields || Object.keys(results.data[0]);
+                            const requiredCol = 'Article#';
+                            
+                            // ตรวจสอบว่ามีคอลัมน์ Article# หรือไม่ (เทียบแบบไม่สนตัวพิมพ์เล็กใหญ่)
+                            const foundKey = headers.find(h => h.toLowerCase() === requiredCol.toLowerCase());
+
+                            if (!foundKey) {
+                                // ถ้าไม่เจอ ให้แจ้งเตือนพร้อมบอกชื่อคอลัมน์ที่เจอ 3 อันแรก เพื่อช่วย Debug
+                                setError(`รูปแบบไฟล์ไม่ถูกต้อง: ไม่พบคอลัมน์ "${requiredCol}" (คอลัมน์ที่พบ: ${headers.slice(0, 5).join(', ')}...)`);
                                 setParsedData([]);
                             } else {
-                                setParsedData(results.data);
+                                // ถ้าเจอ ให้แปลงข้อมูลโดยใช้ key ที่ถูกต้อง (เผื่อกรณีไฟล์จริงเป็น article# ตัวเล็ก)
+                                const normalizedData = results.data.map(row => {
+                                    // สร้าง object ใหม่ที่มั่นใจว่ามี key ตรงกับที่ระบบต้องการ
+                                    return {
+                                        ...row,
+                                        'Article#': row[foundKey] // Map ค่าจาก key ที่เจอ มาใส่ Article#
+                                    };
+                                });
+                                setParsedData(normalizedData);
                             }
+                        } else {
+                             setError('ไม่พบข้อมูลในไฟล์ หรือไฟล์ว่างเปล่า');
                         }
                     },
                     error: (err) => {
-                        setError('Error parsing CSV: ' + err.message);
+                        setError('เกิดข้อผิดพลาดในการอ่านไฟล์ CSV: ' + err.message);
                     }
                 });
             };
