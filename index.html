@@ -221,7 +221,7 @@
 
         // --- Overview View ---
         const OverviewView = ({ data, onImportClick }) => {
-            const [filterText, setFilterText] = useState('');
+            const [filterText, setFilterText] = useState(''); // Keeping state for future but not showing input
             const [columnFilters, setColumnFilters] = useState({});
             const [selectedRow, setSelectedRow] = useState(null);
 
@@ -254,7 +254,7 @@
                 }
             }, [activeData]);
 
-            // 4. Apply Global Search + Column Filters
+            // 4. Apply Global Search (if set programmatically) + Column Filters
             const filteredData = activeData.filter(item => {
                 const searchStr = filterText.toLowerCase();
                 const matchesGlobal = Object.values(item).some(val => 
@@ -284,7 +284,7 @@
             return (
                 <div className="p-8 max-w-full mx-auto h-full flex flex-col">
                     {/* Header */}
-                    <div className="flex justify-between items-end mb-8 flex-none">
+                    <div className="flex justify-between items-end mb-6 flex-none">
                         <div>
                             <h2 className="text-3xl font-bold text-brand tracking-tight">Risk Dashboard</h2>
                             <p className="text-brand-light mt-1 text-sm font-medium">Overview of product quality risks and compliance status.</p>
@@ -315,27 +315,8 @@
 
                     {/* Data Table Panel */}
                     <div className="bg-white rounded-2xl shadow-sm border border-brand-light/20 flex flex-col flex-1 overflow-hidden">
-                        {/* Toolbar - Global Search */}
-                        <div className="p-5 border-b border-brand-light/10 flex items-center justify-between gap-4 bg-white flex-none">
-                            <div className="relative flex-1 max-w-md">
-                                <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-brand-light"></i>
-                                <input 
-                                    type="text" 
-                                    placeholder="Global Search (search in all columns)..." 
-                                    className="w-full pl-10 pr-4 py-2.5 bg-brand-bg border border-brand-light/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all text-sm text-brand placeholder-brand-light"
-                                    value={filterText}
-                                    onChange={e => setFilterText(e.target.value)}
-                                />
-                            </div>
-                            <div className="flex gap-2 text-xs font-medium text-brand-light">
-                                <span className="bg-brand-bg px-3 py-1.5 rounded-lg border border-brand-light/10">
-                                    <i className="fa-solid fa-eye mr-1"></i> Showing <span className="text-brand font-bold">{filteredData.length}</span> rows
-                                </span>
-                                <span className="bg-brand-bg px-3 py-1.5 rounded-lg border border-brand-light/10">
-                                    <i className="fa-solid fa-columns mr-1"></i> <span className="text-brand font-bold">{columns.length}</span> columns
-                                </span>
-                            </div>
-                        </div>
+                        
+                        {/* Note: Global Search Toolbar Removed as requested */}
 
                         {/* Table */}
                         <div className="flex-1 overflow-auto bg-white relative">
