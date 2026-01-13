@@ -1,424 +1,353 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CTQ Risk Assessment Portal</title>
     
+    <!-- Libraries -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
     <script src="https://cdn.tailwindcss.com"></script>
-    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Kanit:wght@300;400;500&display=swap" rel="stylesheet">
+
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
                         brand: {
-                            DEFAULT: '#3B4083', // Deep Indigo [cite: 3]
-                            light: '#8F8CB8',   // Muted Lavender [cite: 3]
-                            accent: '#7AB6B5',  // Muted Teal [cite: 3]
-                            bg: '#F8FAFC',      // Clean Slate [cite: 4]
-                            surface: '#FFFFFF', // Pure White [cite: 4]
-                            success: '#0CC784', // Vibrant Green [cite: 4]
-                            warning: '#FFBC5E', // Orange-Yellow [cite: 5]
-                            info: '#DBF2F2'     // Pale Cyan [cite: 5]
+                            DEFAULT: '#3B4083', // Deep Indigo
+                            light: '#8F8CB8',
+                            accent: '#7AB6B5',
+                            bg: '#F8FAFC',
+                            success: '#0CC784',
+                            warning: '#FFBC5E',
+                            danger: '#EF4444'
                         }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Kanit', 'sans-serif'],
                     }
                 }
             }
         }
     </script>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; color: #3B4083; } [cite: 7]
-        .animate-slide-up { animation: slideUp 0.3s ease-out; } [cite: 8]
-        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } } [cite: 9, 10]
-        ::-webkit-scrollbar { width: 6px; height: 6px; } [cite: 10, 11]
-        ::-webkit-scrollbar-thumb { background: #8F8CB8; border-radius: 3px; } [cite: 12]
-        ::-webkit-scrollbar-thumb:hover { background: #3B4083; } [cite: 13, 14]
+        body { background-color: #F8FAFC; color: #3B4083; }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #8F8CB8; border-radius: 10px; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo } = React; [cite: 14]
+        const { useState, useEffect, useMemo } = React;
 
-        // --- Mock Data Generator --- [cite: 15]
-        const generateMockData = (count) => {
-            return Array.from({ length: count }, (_, i) => ({
-                id: i,
-                Status: Math.random() > 0.5 ? 'Add new' : 'Update', [cite: 15]
-                'SCPR [Y/N]': 'YES',
-                'CTQ Risk Level': ['LOW', 'MEDIUM', 'HIGH'][Math.floor(Math.random() * 3)], [cite: 16]
-                'Article#': `ART-${1000 + i}`,
-                'Model Name Short': `MODEL-${String.fromCharCode(65 + (i%26))}`,
-                'Season': 'FW2026',
-                'Development Factory Name': 'THONG THAI TEXTILE COMPANY', [cite: 16]
-                'Retail Intro Date (RID)': '2026-06-01', [cite: 17]
-                'Division': 'APP',
-                'Sport Category': 'TENNIS',
-                'Created': new Date().toISOString()
-            }));
-        }; [cite: 18, 19]
+        // --- ระบบจำลองข้อมูลเบื้องต้น ---
+        const MOCK_DATA = [
+            { id: 1, 'Status': 'Update', 'CTQ Risk Level': 'HIGH', 'Article#': 'TW6948F26', 'Model Name Short': 'W ULT SET SKT', 'Season': 'FW2026', 'Development Factory Name': 'THONG THAI TEXTILE', 'Retail Intro Date (RID)': '2026-06-01' },
+            { id: 2, 'Status': 'Add new', 'CTQ Risk Level': 'LOW', 'Article#': 'S2507M504', 'Model Name Short': 'TF SHRT TIGHT M', 'Season': 'FW2026', 'Development Factory Name': 'THONG THAI TEXTILE', 'Retail Intro Date (RID)': '2026-06-01' },
+            { id: 3, 'Status': 'Update', 'CTQ Risk Level': 'MEDIUM', 'Article#': 'ART-8822', 'Model Name Short': 'CORE PERFORMANCE', 'Season': 'SS2026', 'Development Factory Name': 'THONG THAI TEXTILE', 'Retail Intro Date (RID)': '2026-03-15' }
+        ];
 
         const App = () => {
-            const [currentTab, setCurrentTab] = useState('overview'); [cite: 19]
-            const [latestData, setLatestData] = useState(generateMockData(5)); [cite: 20]
-            const [historyData, setHistoryData] = useState([]);
+            const [currentTab, setCurrentTab] = useState('overview');
+            const [data, setData] = useState(MOCK_DATA);
+            const [isImporting, setIsImporting] = useState(false);
+            const [history, setHistory] = useState([
+                { id: 1, filename: 'Initial_Load.csv', date: '12/01/2026 09:00', rows: 3, status: 'Completed' }
+            ]);
 
             const handleImportSuccess = (newData, filename) => {
-                const timestamp = new Date().toLocaleString('en-GB'); [cite: 21]
-                setLatestData(newData); [cite: 22]
-                setHistoryData([{ 
-                    version: timestamp, 
-                    uploader: 'Current User', 
-                    filename: filename, 
-                    rows: newData.length, 
-                    status: 'Success' 
-                }, ...historyData]); [cite: 22-24]
+                setData(newData);
+                setHistory([{
+                    id: Date.now(),
+                    filename: filename,
+                    date: new Date().toLocaleString('th-TH'),
+                    rows: newData.length,
+                    status: 'Completed'
+                }, ...history]);
                 setIsImporting(false);
+                setCurrentTab('overview');
             };
 
-            const [isImporting, setIsImporting] = useState(false); [cite: 20]
-
             return (
-                <div className="flex h-screen overflow-hidden bg-brand-bg">
+                <div className="flex h-screen overflow-hidden">
                     {/* Sidebar */}
-                    <aside className="w-72 bg-brand text-white flex flex-col shadow-2xl z-30">
+                    <aside className="w-64 bg-brand text-white flex flex-col shadow-xl z-20">
                         <div className="p-6 border-b border-white/10">
-                            <h1 className="text-xl font-bold flex items-center gap-3">
-                                <div className="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-inner border border-white/20">
-                                    <i className="fa-solid fa-shield-halved text-brand-warning text-lg"></i> [cite: 26, 27]
-                                </div>
-                                <div>
-                                    <span className="tracking-tight block">CTQ Portal</span> [cite: 28]
-                                    <span className="text-[10px] text-brand-light font-normal uppercase tracking-wider">Risk Assessment</span>
-                                </div>
-                            </h1>
-                        </div>
-                        <nav className="flex-1 p-4 space-y-2 mt-4">
-                            <NavButton active={currentTab === 'overview'} icon="fa-chart-pie" label="Risk Dashboard" onClick={() => setCurrentTab('overview')} /> [cite: 30, 31]
-                            <NavButton active={currentTab === 'history'} icon="fa-history" label="Upload History" onClick={() => setCurrentTab('history')} /> [cite: 32, 33]
-                        </nav>
-                        <div className="p-4 bg-black/20 m-4 rounded-xl border border-white/5 backdrop-blur-sm">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-accent to-brand flex items-center justify-center text-xs font-bold text-white shadow-lg border-2 border-white/20">US</div> [cite: 35]
-                                <div>
-                                    <p className="text-sm font-medium text-white">User Admin</p> [cite: 36]
-                                    <p className="text-xs text-brand-light">Quality Dept.</p>
+                                <div className="p-2 bg-brand-warning rounded-lg text-brand shadow-lg">
+                                    <i className="fa-solid fa-shield-halved text-xl"></i>
+                                </div>
+                                <span className="font-bold text-lg tracking-tight">CTQ Portal</span>
+                            </div>
+                        </div>
+                        
+                        <nav className="flex-1 p-4 space-y-1">
+                            <button 
+                                onClick={() => {setCurrentTab('overview'); setIsImporting(false);}}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${currentTab === 'overview' ? 'bg-white text-brand shadow-lg font-bold' : 'text-brand-light hover:bg-white/10 hover:text-white'}`}
+                            >
+                                <i className="fa-solid fa-chart-line w-5"></i> Dashboard
+                            </button>
+                            <button 
+                                onClick={() => {setCurrentTab('history'); setIsImporting(false);}}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${currentTab === 'history' ? 'bg-white text-brand shadow-lg font-bold' : 'text-brand-light hover:bg-white/10 hover:text-white'}`}
+                            >
+                                <i className="fa-solid fa-clock-rotate-left w-5"></i> History
+                            </button>
+                        </nav>
+
+                        <div className="p-4 mt-auto">
+                            <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                                <p className="text-[10px] uppercase text-brand-light font-bold mb-2">Logged in as</p>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-brand-accent flex items-center justify-center font-bold text-xs">SA</div>
+                                    <div className="text-xs">
+                                        <p className="font-bold">Siriwan A.</p>
+                                        <p className="opacity-60 italic">Quality Control</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </aside>
 
                     {/* Main Content */}
-                    <main className="flex-1 overflow-y-auto relative custom-scrollbar">
-                        {currentTab === 'overview' && (
-                            !isImporting ? (
-                                <OverviewView data={latestData} onImportClick={() => setIsImporting(true)} /> [cite: 39, 40]
-                            ) : (
-                                <ImportView onSuccess={handleImportSuccess} onCancel={() => setIsImporting(false)} /> [cite: 41, 42]
-                            )
+                    <main className="flex-1 overflow-y-auto custom-scrollbar relative">
+                        {!isImporting ? (
+                            <div className="p-8 animate-fade-in">
+                                {currentTab === 'overview' ? (
+                                    <Overview data={data} onImport={() => setIsImporting(true)} />
+                                ) : (
+                                    <History history={history} />
+                                )}
+                            </div>
+                        ) : (
+                            <ImportView onCancel={() => setIsImporting(false)} onSuccess={handleImportSuccess} />
                         )}
-                        {currentTab === 'history' && <HistoryView data={historyData} />} [cite: 42, 43]
                     </main>
                 </div>
             );
         };
 
-        const NavButton = ({ active, icon, label, onClick }) => (
-            <button 
-                onClick={onClick}
-                className={`w-full text-left px-4 py-3.5 rounded-xl transition-all duration-300 flex items-center gap-3 group border ${
-                    active ? 'bg-white text-brand shadow-lg font-bold border-white translate-x-1' : 'text-brand-light border-transparent hover:bg-white/10 hover:text-white hover:border-white/10'
-                [cite_start]}`} [cite: 44, 45]
-            >
-                <i className={`fa-solid ${icon} w-5 text-center transition-transform group-hover:scale-110 ${active ? 'text-brand' : 'text-brand-light group-hover:text-white'}`}></i> 
-                {label} [cite: 45, 46]
-            </button>
-        );
-
-        const OverviewView = ({ data, onImportClick }) => {
-            const [filterText, setFilterText] = useState(''); [cite: 47]
-            const [selectedRow, setSelectedRow] = useState(null);
-
+        const Overview = ({ data, onImport }) => {
             const stats = useMemo(() => ({
                 total: data.length,
-                highRisk: data.filter(d => d['CTQ Risk Level'] === 'HIGH').length, [cite: 48]
-                factories: new Set(data.map(d => d['Development Factory Name'])).size, [cite: 49]
-                seasons: new Set(data.map(d => d['Season'])).size
+                high: data.filter(d => d['CTQ Risk Level'] === 'HIGH').length,
+                med: data.filter(d => d['CTQ Risk Level'] === 'MEDIUM').length,
+                low: data.filter(d => d['CTQ Risk Level'] === 'LOW').length
             }), [data]);
 
-            const filteredData = data.filter(item => {
-                const searchStr = filterText.toLowerCase();
-                return (
-                    (item['Article#'] || '').toLowerCase().includes(searchStr) ||
-                    (item['Model Name Short'] || '').toLowerCase().includes(searchStr) ||
-                    (item['Season'] || '').toLowerCase().includes(searchStr)
-                ); [cite: 50, 51]
-            });
-
-            const handleExport = () => {
-                const csv = Papa.unparse(data);
-                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); [cite: 52, 53]
-                const link = document.createElement("a");
-                link.setAttribute("href", URL.createObjectURL(blob));
-                link.setAttribute("download", `CTQ_Export_${new Date().toISOString().slice(0,10)}.csv`); [cite: 53, 54]
-                link.click();
-            };
-
             return (
-                <div className="p-8 max-w-[1600px] mx-auto">
-                    <div className="flex justify-between items-end mb-8">
+                <div className="max-w-6xl mx-auto">
+                    <header className="flex justify-between items-center mb-8">
                         <div>
-                            <h2 className="text-3xl font-bold text-brand tracking-tight">Risk Dashboard</h2> [cite: 55]
-                            <p className="text-brand-light mt-1 text-sm font-medium">Overview of product quality risks and compliance status.</p>
+                            <h1 className="text-2xl font-bold text-brand">Risk Dashboard</h1>
+                            <p className="text-brand-light">ข้อมูลประเมินความเสี่ยง CTQ ประจำปี 2026</p>
                         </div>
-                        <div className="flex gap-3">
-                            <button onClick={handleExport} className="px-5 py-2.5 bg-white border border-brand-light/30 text-brand rounded-xl hover:bg-white hover:border-brand-accent/50 font-semibold shadow-sm transition-all flex items-center gap-2">
-                                <i className="fa-solid fa-download text-brand-accent"></i> Export CSV [cite: 56-58]
-                            </button>
-                            <button onClick={onImportClick} className="px-5 py-2.5 bg-brand text-white rounded-xl hover:bg-opacity-90 shadow-lg shadow-brand/20 font-semibold transition-all flex items-center gap-2 hover:-translate-y-0.5">
-                                <i className="fa-solid fa-cloud-arrow-up"></i> Import Data [cite: 58-60]
-                            </button>
+                        <button 
+                            onClick={onImport}
+                            className="bg-brand text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:shadow-lg hover:-translate-y-0.5 transition-all"
+                        >
+                            <i className="fa-solid fa-file-import"></i> Import Data
+                        </button>
+                    </header>
+
+                    {/* Stat Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+                        <div className="bg-white p-6 rounded-2xl border border-brand-light/20 shadow-sm">
+                            <p className="text-xs font-bold text-brand-light uppercase">Total Items</p>
+                            <h2 className="text-3xl font-bold mt-1">{stats.total}</h2>
+                        </div>
+                        <div className="bg-white p-6 rounded-2xl border-l-4 border-l-brand-danger border-brand-light/20 shadow-sm">
+                            <p className="text-xs font-bold text-brand-danger uppercase">High Risk</p>
+                            <h2 className="text-3xl font-bold mt-1 text-brand-danger">{stats.high}</h2>
+                        </div>
+                        <div className="bg-white p-6 rounded-2xl border-l-4 border-l-brand-warning border-brand-light/20 shadow-sm">
+                            <p className="text-xs font-bold text-orange-500 uppercase">Medium Risk</p>
+                            <h2 className="text-3xl font-bold mt-1 text-orange-500">{stats.med}</h2>
+                        </div>
+                        <div className="bg-white p-6 rounded-2xl border-l-4 border-l-brand-success border-brand-light/20 shadow-sm">
+                            <p className="text-xs font-bold text-brand-success uppercase">Low Risk</p>
+                            <h2 className="text-3xl font-bold mt-1 text-brand-success">{stats.low}</h2>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                        <StatCard title="Total Articles" value={stats.total} icon="fa-box-open" colorClass="text-brand" bgClass="bg-brand/10" /> [cite: 61]
-                        <StatCard title="High Risk Items" value={stats.highRisk} icon="fa-triangle-exclamation" colorClass="text-red-600" bgClass="bg-red-100" /> [cite: 61]
-                        <StatCard title="Active Factories" value={stats.factories} icon="fa-industry" colorClass="text-brand-success" bgClass="bg-brand-success/10" /> [cite: 61, 62]
-                        <StatCard title="Seasons" value={stats.seasons} icon="fa-calendar-check" colorClass="text-brand-accent" bgClass="bg-brand-accent/10" /> [cite: 62]
-                    </div>
-
-                    <div className="bg-white rounded-2xl shadow-sm border border-brand-light/20 flex flex-col h-[600px] overflow-hidden">
-                        <div className="p-5 border-b border-brand-light/10 flex items-center justify-between gap-4 bg-white">
-                            <div className="relative flex-1 max-w-md">
-                                <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-brand-light"></i> [cite: 63, 64]
-                                <input type="text" placeholder="Search Article#, Model, or Season..." className="w-full pl-10 pr-4 py-2.5 bg-brand-bg border border-brand-light/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all text-sm text-brand placeholder-brand-light" value={filterText} onChange={e => setFilterText(e.target.value)} /> [cite: 65, 66]
-                            </div>
-                            <div className="text-xs font-medium text-brand-light bg-brand-bg px-3 py-1.5 rounded-lg border border-brand-light/10">
-                                Showing <span className="text-brand font-bold">{filteredData.length}</span> records [cite: 67, 68]
-                            </div>
-                        </div>
-
-                        <div className="flex-1 overflow-auto bg-white">
-                            <table className="w-full text-left border-collapse">
-                                <thead className="bg-brand-bg sticky top-0 z-10 shadow-sm">
-                                    <tr>
-                                        <th className="px-6 py-4 text-xs font-bold text-brand uppercase tracking-wider">Status</th> [cite: 69, 70]
-                                        <th className="px-6 py-4 text-xs font-bold text-brand uppercase tracking-wider">Risk Level</th> [cite: 71]
-                                        <th className="px-6 py-4 text-xs font-bold text-brand uppercase tracking-wider">Article Info</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-brand uppercase tracking-wider">Season</th> [cite: 72]
-                                        <th className="px-6 py-4 text-xs font-bold text-brand uppercase tracking-wider">Factory</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-brand uppercase tracking-wider text-right">Action</th> [cite: 73]
+                    {/* Data Table */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-brand-light/20 overflow-hidden">
+                        <table className="w-full text-left">
+                            <thead className="bg-brand-bg text-brand-light text-xs font-bold uppercase tracking-wider">
+                                <tr>
+                                    <th className="px-6 py-4">Article#</th>
+                                    <th className="px-6 py-4">Model Name</th>
+                                    <th className="px-6 py-4">Risk Level</th>
+                                    <th className="px-6 py-4">Season</th>
+                                    <th className="px-6 py-4">Factory</th>
+                                    <th className="px-6 py-4 text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-brand-light/10">
+                                {data.map((item, idx) => (
+                                    <tr key={idx} className="hover:bg-brand-bg transition-colors">
+                                        <td className="px-6 py-4 font-bold font-mono text-sm">{item['Article#']}</td>
+                                        <td className="px-6 py-4 text-sm">{item['Model Name Short']}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-3 py-1 rounded-full text-[10px] font-bold border ${
+                                                item['CTQ Risk Level'] === 'HIGH' ? 'bg-red-50 text-red-600 border-red-200' :
+                                                item['CTQ Risk Level'] === 'MEDIUM' ? 'bg-orange-50 text-orange-600 border-orange-200' :
+                                                'bg-emerald-50 text-emerald-600 border-emerald-200'
+                                            }`}>
+                                                {item['CTQ Risk Level']}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-brand-light">{item['Season']}</td>
+                                        <td className="px-6 py-4 text-sm text-brand-light truncate max-w-[150px]">{item['Development Factory Name']}</td>
+                                        <td className="px-6 py-4 text-center">
+                                            <button className="text-brand-light hover:text-brand"><i className="fa-solid fa-ellipsis"></i></button>
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody className="divide-y divide-brand-light/10">
-                                    {filteredData.map((row, idx) => (
-                                        <tr key={idx} className="hover:bg-brand-info/30 transition-colors group">
-                                            <td className="px-6 py-4">
-                                                <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide border ${row['Status'] === 'Add new' ? 'bg-brand/5 text-brand border-brand/20' : 'bg-brand-warning/10 text-orange-600 border-brand-warning/20'}`}>
-                                                    {row['Status'] || 'N/A'} [cite: 76-79]
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4"><RiskBadge level={row['CTQ Risk Level']} /></td> [cite: 81]
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold text-brand text-sm">{row['Article#']}</span> [cite: 82, 83]
-                                                    <span className="text-xs text-brand-light">{row['Model Name Short']}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-brand-light">{row['Season']}</td> [cite: 84, 85]
-                                            <td className="px-6 py-4 text-sm text-brand-light truncate max-w-[200px]">{row['Development Factory Name']}</td> [cite: 85, 86]
-                                            <td className="px-6 py-4 text-right">
-                                                <button onClick={() => setSelectedRow(row)} className="text-brand-light hover:text-brand hover:bg-brand-bg p-2 rounded-full transition-all"><i className="fa-solid fa-eye"></i></button> [cite: 88-92]
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    {selectedRow && <DetailModal row={selectedRow} onClose={() => setSelectedRow(null)} />} [cite: 99, 100]
-                </div>
-            );
-        };
-
-        const StatCard = ({ title, value, icon, colorClass, bgClass }) => (
-            <div className="bg-white p-5 rounded-2xl border border-brand-light/20 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
-                <div>
-                    <p className="text-[11px] font-bold text-brand-light uppercase tracking-wider">{title}</p> [cite: 101, 102]
-                    <h3 className="text-2xl font-bold text-brand mt-1">{value}</h3>
-                </div>
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl ${bgClass} ${colorClass}`}>
-                    <i className={`fa-solid ${icon}`}></i> [cite: 102, 103]
-                </div>
-            </div>
-        );
-
-        const RiskBadge = ({ level }) => {
-            const colors = {
-                HIGH: 'bg-red-50 text-red-600 border-red-200 dot-red-500',
-                MEDIUM: 'bg-brand-warning/10 text-orange-600 border-brand-warning/30 dot-brand-warning',
-                LOW: 'bg-brand-success/10 text-brand-success border-brand-success/30 dot-brand-success'
-            }; [cite: 104-108]
-            const current = colors[level] || 'bg-brand-bg text-brand-light border-brand-light/30 dot-brand-light';
-            return (
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${current}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${current.split('dot-')[1]}`}></span>
-                    {level || 'N/A'} [cite: 108, 109]
-                </span>
-            );
-        };
-
-        const DetailModal = ({ row, onClose }) => {
-            const groups = {
-                "Product Info": ['Article#', 'Model Name Short', 'Product Group', 'Division', 'Season'],
-                "Risk Assessment": ['CTQ Risk Level', 'Safety', 'Function', 'Durability', 'Appearance'], [cite: 110]
-                "Supply Chain": ['Development Factory Name', 'Production Factory Name', 'Retail Intro Date (RID)'], [cite: 110, 111]
-                "System Info": ['Created', 'Created By', 'Status', 'SCPR [Y/N]']
-            };
-            return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand/40 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col animate-slide-up overflow-hidden">
-                        <div className="p-6 border-b border-brand-light/10 flex justify-between items-center bg-brand-bg">
-                            <h3 className="text-lg font-bold text-brand">Product Details: {row['Article#']}</h3> [cite: 112, 113]
-                            <button onClick={onClose} className="w-8 h-8 rounded-full bg-white hover:bg-brand hover:text-white transition-all"><i className="fa-solid fa-xmark"></i></button> [cite: 114, 115]
-                        </div>
-                        <div className="p-8 overflow-y-auto">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                {Object.entries(groups).map(([groupName, fields]) => (
-                                    <div key={groupName}>
-                                        <h4 className="text-xs font-bold text-brand-accent uppercase tracking-wider border-b border-brand-light/10 pb-2 mb-3">{groupName}</h4> [cite: 116-118]
-                                        <div className="space-y-3">
-                                            {fields.map(field => (
-                                                <div key={field} className="flex flex-col">
-                                                    <span className="text-[10px] text-brand-light uppercase">{field}</span> [cite: 119, 120]
-                                                    <span className="text-sm font-medium text-brand">{row[field] || '-'}</span> [cite: 121-123]
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
                                 ))}
-                            </div>
-                        </div>
-                        <div className="p-4 border-t border-brand-light/10 bg-brand-bg flex justify-end">
-                            <button onClick={onClose} className="px-6 py-2 bg-white border rounded-xl font-semibold">Close</button> [cite: 130, 131]
-                        </div>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             );
         };
 
-        // --- Import View (FIXED VERSION) ---
-        const ImportView = ({ onSuccess, onCancel }) => {
-            const [file, setFile] = useState(null);
-            const [parsedData, setParsedData] = useState([]);
-            const [error, setError] = useState('');
+        const ImportView = ({ onCancel, onSuccess }) => {
+            const [isDragging, setIsDragging] = useState(false);
+            const [error, setError] = useState(null);
+            const [preview, setPreview] = useState(null);
 
-            const handleFileChange = (e) => {
-                const selectedFile = e.target.files[0];
-                if (!selectedFile) return; [cite: 133-136]
+            const processFile = (file) => {
+                if (!file.name.endsWith('.csv')) {
+                    setError('กรุณาอัปโหลดไฟล์นามสกุล .csv เท่านั้น');
+                    return;
+                }
                 
-                setFile(selectedFile);
-                setError('');
-
-                Papa.parse(selectedFile, {
+                setError(null);
+                Papa.parse(file, {
                     header: true,
                     skipEmptyLines: 'greedy',
-                    transformHeader: (h) => h.replace(/^\uFEFF/, '').trim(), [cite: 136, 137]
+                    transformHeader: (h) => h.replace(/^\uFEFF/, '').trim(),
                     complete: (results) => {
-                        if (results.data && results.data.length > 0) {
-                            const headers = results.meta.fields || Object.keys(results.data[0]);
-                            
-                            // --- FIXED: Flexible Column Matching --- [cite: 139]
-                            const articleKey = headers.find(h => {
-                                const clean = h.trim().toLowerCase();
-                                return (clean.includes('article') && clean.includes('#')) || clean === 'article' || clean.includes('art #');
-                            });
-                            
-                            const workingKey = headers.find(h => {
-                                const clean = h.trim().toLowerCase();
-                                return (clean.includes('working') && clean.includes('#')) || clean.includes('working number');
-                            });
+                        const headers = results.meta.fields || [];
+                        
+                        // --- FIXED: Flexible Column Matching ---
+                        // ค้นหาคอลัมน์แบบยืดหยุ่น (ไม่สนใจเว้นวรรคหรืออักษรเล็กใหญ่)
+                        const articleKey = headers.find(h => {
+                            const c = h.toLowerCase().trim();
+                            return (c.includes('article') && c.includes('#')) || c === 'article' || c === 'article#';
+                        });
+                        
+                        const workingKey = headers.find(h => {
+                            const c = h.toLowerCase().trim();
+                            return (c.includes('working') && c.includes('#')) || c.includes('working number');
+                        });
 
-                            const modelKey = headers.find(h => {
-                                const clean = h.trim().toLowerCase();
-                                return clean.includes('model') && clean.includes('name');
-                            });
+                        const riskKey = headers.find(h => h.toLowerCase().includes('risk') && h.toLowerCase().includes('level'));
 
-                            const anyKey = articleKey || workingKey || modelKey; [cite: 140, 141]
-
-                            if (!anyKey) {
-                                setError(`รูปแบบไฟล์ไม่ตรงกับระบบ: ไม่พบคอลัมน์ Article# หรือ Working# ในไฟล์ของคุณ \n\nคอลัมน์ที่พบคือ: ${headers.slice(0, 5).join(', ')}`); [cite: 141]
-                                setParsedData([]);
-                            } else {
-                                const normalizedData = results.data.map(row => {
-                                    // พยายามดึงค่า Article# มาใช้เป็นค่าหลัก [cite: 143]
-                                    let articleVal = row[articleKey] || row[workingKey] || row[modelKey] || 'N/A';
-                                    return {
-                                        ...row,
-                                        'Article#': articleVal.toString().trim(), [cite: 144-146]
-                                        'Status': row['Status'] || 'Update',
-                                        'id': Math.random().toString(36).substr(2, 9)
-                                    };
-                                });
-                                setParsedData(normalizedData);
-                            }
-                        } else {
-                             setError('ไม่พบข้อมูลในไฟล์ หรือไฟล์ว่างเปล่า'); [cite: 148]
+                        if (!articleKey && !workingKey) {
+                            setError(`ไม่พบคอลัมน์ Article# หรือ Working# (พบคอลัมน์: ${headers.slice(0,3).join(', ')}...)`);
+                            return;
                         }
-                    },
-                    error: (err) => setError('เกิดข้อผิดพลาดในการอ่านไฟล์ CSV: ' + err.message) [cite: 149]
+
+                        const normalized = results.data.map(row => ({
+                            ...row,
+                            'Article#': (row[articleKey] || row[workingKey] || 'N/A').toString().trim(),
+                            'CTQ Risk Level': row[riskKey] || 'LOW'
+                        }));
+
+                        setPreview({ filename: file.name, data: normalized });
+                    }
                 });
             };
 
             return (
-                <div className="max-w-4xl mx-auto p-8 animate-slide-up">
-                    <button onClick={onCancel} className="mb-6 text-brand-light hover:text-brand flex items-center gap-2 font-medium">
-                        <i className="fa-solid fa-arrow-left"></i> Back to Dashboard [cite: 151]
+                <div className="p-8 max-w-4xl mx-auto animate-fade-in">
+                    <button onClick={onCancel} className="flex items-center gap-2 text-brand-light hover:text-brand font-bold mb-6">
+                        <i className="fa-solid fa-arrow-left"></i> กลับหน้าหลัก
                     </button>
-                    <div className="bg-white rounded-2xl shadow-sm border border-brand-light/20 overflow-hidden">
-                        <div className="p-8 text-center bg-brand-bg">
-                            <h2 className="text-2xl font-bold text-brand mb-2">Import Risk Assessment Data</h2> [cite: 152, 153]
+                    
+                    <div className="bg-white rounded-3xl border border-brand-light/20 shadow-xl overflow-hidden">
+                        <div className="p-10 text-center bg-brand-bg border-b border-brand-light/10">
+                            <h2 className="text-2xl font-bold mb-2">อัปโหลดข้อมูลความเสี่ยง</h2>
+                            <p className="text-brand-light">รองรับไฟล์ CSV จาก SmartSheet หรือ Excel</p>
                         </div>
-                        <div className="p-8">
-                            {!file ? (
-                                <div className="border-2 border-dashed border-brand-light/30 rounded-2xl p-12 flex flex-col items-center justify-center relative group hover:border-brand transition-all">
-                                    <input type="file" accept=".csv" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" /> [cite: 154-156]
-                                    <div className="w-16 h-16 bg-brand-bg text-brand rounded-full flex items-center justify-center mb-4 group-hover:bg-brand group-hover:text-white transition-all"><i className="fa-solid fa-cloud-arrow-up text-2xl"></i></div> [cite: 157, 158]
-                                    <p className="text-lg font-bold text-brand">Click to upload CSV file</p> [cite: 158]
+
+                        <div className="p-10">
+                            {!preview ? (
+                                <div 
+                                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                                    onDragLeave={() => setIsDragging(false)}
+                                    onDrop={(e) => { e.preventDefault(); setIsDragging(false); processFile(e.dataTransfer.files[0]); }}
+                                    className={`border-4 border-dashed rounded-3xl p-16 flex flex-col items-center justify-center transition-all cursor-pointer ${isDragging ? 'border-brand bg-brand/5' : 'border-brand-light/20'}`}
+                                >
+                                    <input type="file" accept=".csv" onChange={(e) => processFile(e.target.files[0])} className="hidden" id="fileInput" />
+                                    <label htmlFor="fileInput" className="cursor-pointer flex flex-col items-center">
+                                        <div className="w-20 h-20 bg-brand-bg rounded-full flex items-center justify-center text-brand text-3xl mb-4">
+                                            <i className="fa-solid fa-cloud-arrow-up"></i>
+                                        </div>
+                                        <p className="text-xl font-bold">คลิกเพื่อเลือกไฟล์ หรือลากไฟล์มาวาง</p>
+                                        <p className="text-sm text-brand-light mt-2 italic font-medium">ระบบแก้ไขปัญหา "ไม่พบคอลัมน์" แล้ว รองรับหัวตารางได้หลายรูปแบบ</p>
+                                    </label>
                                 </div>
                             ) : (
                                 <div className="space-y-6">
-                                    <div className="flex items-center justify-between p-4 bg-brand-info/30 border rounded-xl">
+                                    <div className="flex items-center justify-between p-5 bg-emerald-50 border border-emerald-200 rounded-2xl">
                                         <div className="flex items-center gap-4">
-                                            <i className="fa-solid fa-file-csv text-2xl text-brand-accent"></i> [cite: 160-162]
+                                            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-emerald-500 shadow-sm border border-emerald-100">
+                                                <i className="fa-solid fa-file-csv text-2xl"></i>
+                                            </div>
                                             <div>
-                                                <p className="font-bold text-brand">{file.name}</p> [cite: 163]
-                                                <p className="text-xs text-brand-light">{parsedData.length} Rows detected</p> [cite: 164]
+                                                <p className="font-bold text-emerald-900">{preview.filename}</p>
+                                                <p className="text-xs text-emerald-700">ตรวจพบข้อมูลทั้งหมด {preview.data.length} รายการ</p>
                                             </div>
                                         </div>
-                                        <button onClick={() => {setFile(null); setParsedData([]);}} className="text-red-500"><i className="fa-solid fa-trash"></i></button> [cite: 165, 166]
+                                        <button onClick={() => setPreview(null)} className="text-emerald-700 hover:text-red-500"><i className="fa-solid fa-trash-can"></i></button>
                                     </div>
-                                    {error && <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm border border-red-100 whitespace-pre-wrap"><i className="fa-solid fa-circle-exclamation mr-2"></i>{error}</div>} [cite: 168-170]
-                                    {parsedData.length > 0 && (
-                                        <div className="flex justify-end gap-3 pt-6 border-t border-brand-light/10">
-                                            <button onClick={onCancel} className="px-6 py-2.5 text-brand-light font-bold">Cancel</button> [cite: 187, 188]
-                                            <button onClick={() => onSuccess(parsedData, file.name)} className="px-6 py-2.5 bg-brand text-white font-bold rounded-xl shadow-lg">Confirm Upload</button> [cite: 189-191]
+
+                                    <div className="bg-brand-bg rounded-2xl p-6 border border-brand-light/10">
+                                        <h3 className="text-xs font-bold uppercase text-brand-light mb-4">Preview ข้อมูล 3 แถวแรก</h3>
+                                        <div className="space-y-3">
+                                            {preview.data.slice(0, 3).map((row, i) => (
+                                                <div key={i} className="flex justify-between items-center text-sm bg-white p-3 rounded-xl border border-brand-light/10">
+                                                    <span className="font-bold">{row['Article#']}</span>
+                                                    <span className="text-brand-light">{row['Model Name Short'] || 'No Model Name'}</span>
+                                                    <span className="text-[10px] font-bold bg-brand-bg px-2 py-1 rounded border uppercase">{row['CTQ Risk Level']}</span>
+                                                </div>
+                                            ))}
                                         </div>
-                                    )}
+                                    </div>
+
+                                    <div className="flex gap-4 pt-4">
+                                        <button onClick={() => setPreview(null)} className="flex-1 py-3 text-brand-light font-bold hover:bg-brand-bg rounded-xl transition-all">Cancel</button>
+                                        <button 
+                                            onClick={() => onSuccess(preview.data, preview.filename)}
+                                            className="flex-1 py-3 bg-brand text-white font-bold rounded-xl shadow-lg shadow-brand/20 hover:-translate-y-1 transition-all"
+                                        >
+                                            Confirm & Update Dashboard
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {error && (
+                                <div className="mt-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl text-sm flex items-start gap-3">
+                                    <i className="fa-solid fa-circle-exclamation mt-0.5"></i>
+                                    <div>
+                                        <p className="font-bold">Error: อัปโหลดล้มเหลว</p>
+                                        <p className="opacity-80">{error}</p>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -427,30 +356,27 @@
             );
         };
 
-        const HistoryView = ({ data }) => (
-            <div className="p-8 max-w-[1600px] mx-auto">
-                <h2 className="text-2xl font-bold text-brand mb-6">Upload History</h2> [cite: 194]
-                <div className="bg-white rounded-2xl shadow-sm border border-brand-light/20 overflow-hidden">
-                    <table className="w-full text-left">
-                        <thead className="bg-brand-bg">
-                            <tr>
-                                <th className="px-6 py-4 text-xs font-bold text-brand uppercase">Version Time</th> [cite: 195, 196]
-                                <th className="px-6 py-4 text-xs font-bold text-brand uppercase">Filename</th> [cite: 196]
-                                <th className="px-6 py-4 text-xs font-bold text-brand uppercase">Total Rows</th> [cite: 197]
-                                <th className="px-6 py-4 text-xs font-bold text-brand uppercase">Status</th> [cite: 198]
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-brand-light/10">
-                            {data.length > 0 ? data.map((row, idx) => (
-                                <tr key={idx} className="hover:bg-brand-bg">
-                                    <td className="px-6 py-4 text-sm font-mono text-brand font-bold">{row.version}</td> [cite: 199-201]
-                                    <td className="px-6 py-4 text-sm text-brand-light">{row.filename}</td> [cite: 202]
-                                    <td className="px-6 py-4 text-sm text-brand-light">{row.rows} records</td> [cite: 203]
-                                    <td className="px-6 py-4"><span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-brand-success/10 text-brand-success border border-brand-success/20">{row.status}</span></td> [cite: 204, 205]
-                                </tr>
-                            )) : <tr><td colSpan="4" className="px-6 py-12 text-center text-brand-light/60">No upload history yet.</td></tr>} [cite: 206, 207]
-                        </tbody>
-                    </table>
+        const History = ({ history }) => (
+            <div className="max-w-4xl mx-auto">
+                <h1 className="text-2xl font-bold text-brand mb-8">ประวัติการอัปโหลด</h1>
+                <div className="space-y-4">
+                    {history.map(item => (
+                        <div key={item.id} className="bg-white p-6 rounded-2xl border border-brand-light/20 flex items-center justify-between shadow-sm hover:shadow-md transition-all">
+                            <div className="flex items-center gap-5">
+                                <div className="w-12 h-12 bg-brand-bg rounded-2xl flex items-center justify-center text-brand">
+                                    <i className="fa-solid fa-cloud-check text-xl"></i>
+                                </div>
+                                <div>
+                                    <p className="font-bold">{item.filename}</p>
+                                    <p className="text-xs text-brand-light">อัปโหลดเมื่อ: {item.date}</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-sm font-bold">{item.rows} records</p>
+                                <span className="text-[10px] font-bold uppercase text-brand-success bg-brand-success/10 px-2 py-1 rounded border border-brand-success/20">Success</span>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
         );
