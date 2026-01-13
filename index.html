@@ -56,10 +56,15 @@
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         
         /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #8F8CB8; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #3B4083; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 5px; border: 2px solid #fff; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Sticky Column Styles */
+        .sticky-col { position: sticky; left: 0; z-index: 20; background-color: #fff; }
+        .sticky-header { position: sticky; top: 0; z-index: 30; }
+        .sticky-corner { position: sticky; top: 0; left: 0; z-index: 40; }
     </style>
 </head>
 <body>
@@ -289,15 +294,15 @@
                         {/* Table */}
                         <div className="flex-1 overflow-auto bg-white">
                             <table className="w-full text-left border-collapse">
-                                <thead className="bg-brand-bg sticky top-0 z-10 shadow-sm">
+                                <thead className="bg-brand-bg sticky-header shadow-sm">
                                     <tr>
-                                        <th className="px-6 py-4 text-xs font-bold text-brand uppercase tracking-wider w-24">Status</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-brand uppercase tracking-wider">Risk Level</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-brand uppercase tracking-wider">Article Info</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-brand uppercase tracking-wider">Season</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-brand uppercase tracking-wider">Factory</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-brand uppercase tracking-wider">Retail Date</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-brand uppercase tracking-wider text-right">Action</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-brand uppercase tracking-wider w-24 bg-brand-bg">Status</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-brand uppercase tracking-wider bg-brand-bg">Risk Level</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-brand uppercase tracking-wider bg-brand-bg">Article Info</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-brand uppercase tracking-wider bg-brand-bg">Season</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-brand uppercase tracking-wider bg-brand-bg">Factory</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-brand uppercase tracking-wider bg-brand-bg">Retail Date</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-brand uppercase tracking-wider text-right bg-brand-bg">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-brand-light/10">
@@ -467,7 +472,7 @@
             );
         };
 
-        // --- Import View (Robust Version with Excel Support) ---
+        // --- Import View (Robust Version with Excel Support + Full Preview + All Columns) ---
         const ImportView = ({ onSuccess, onCancel }) => {
             const [file, setFile] = useState(null);
             const [parsedData, setParsedData] = useState([]);
@@ -484,7 +489,7 @@
                 // Get headers from first row
                 const headers = Object.keys(rawData[0]);
 
-                // 1. Find key column
+                // 1. Find key column (for fallback logic mostly)
                 const articleKey = headers.find(h => h.trim().toLowerCase() === 'article#');
                 const workingKey = headers.find(h => h.trim().toLowerCase() === 'working#');
                 const modelKey = headers.find(h => h.trim().toLowerCase() === 'model name short');
@@ -496,15 +501,16 @@
                     return;
                 }
 
-                // 2. Normalize data
+                // 2. Normalize data (Preserving ALL columns)
                 const normalizedData = rawData.map(row => {
                     let articleVal = row[articleKey]; 
                     if (!articleVal || String(articleVal).trim() === '') articleVal = row[workingKey];
                     if (!articleVal || String(articleVal).trim() === '') articleVal = row[modelKey];
                     if (!articleVal) articleVal = 'N/A';
 
+                    // Note: We spread ...row first, so all original columns are kept
                     return {
-                        ...row,
+                        ...row, 
                         'Article#': articleVal,
                         'Status': row['Status'] || 'Update',
                         'id': Math.random().toString(36).substr(2, 9)
@@ -554,109 +560,143 @@
                     });
                 }
             };
+            
+            // Get all column names from first row (excluding internal ID)
+            // This ensures we show every column present in the file
+            const allColumns = parsedData.length > 0 ? Object.keys(parsedData[0]).filter(k => k !== 'id') : [];
 
             return (
-                <div className="max-w-4xl mx-auto p-8 animate-slide-up">
-                    <button onClick={onCancel} className="mb-6 text-brand-light hover:text-brand flex items-center gap-2 font-medium transition-colors">
-                        <i className="fa-solid fa-arrow-left"></i> Back to Dashboard
-                    </button>
-                    
-                    <div className="bg-white rounded-2xl shadow-sm border border-brand-light/20 overflow-hidden">
-                        <div className="p-8 text-center border-b border-brand-light/10 bg-brand-bg">
-                            <h2 className="text-2xl font-bold text-brand mb-2">Import Risk Assessment Data</h2>
-                            <p className="text-brand-light text-sm">Upload your `.csv` or `.xlsx` file exported from SmartSheet/Excel.</p>
+                <div className="max-w-[95%] mx-auto p-6 animate-slide-up flex flex-col h-screen overflow-hidden">
+                    <div className="flex-none mb-6">
+                         <button onClick={onCancel} className="mb-4 text-brand-light hover:text-brand flex items-center gap-2 font-medium transition-colors">
+                            <i className="fa-solid fa-arrow-left"></i> Back to Dashboard
+                        </button>
+                        
+                        <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-brand-light/20">
+                            <div>
+                                <h2 className="text-2xl font-bold text-brand mb-1">Import Data</h2>
+                                <p className="text-brand-light text-sm">Upload and verify your data before saving.</p>
+                            </div>
+                            
+                            {/* File Status / Re-upload */}
+                            {file ? (
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-3 bg-brand-info/30 px-4 py-2 rounded-xl border border-brand-accent/20">
+                                        <div className="w-8 h-8 bg-white text-brand-accent rounded-lg flex items-center justify-center shadow-sm text-sm">
+                                            {file.name.endsWith('csv') 
+                                                ? <i className="fa-solid fa-file-csv"></i>
+                                                : <i className="fa-solid fa-file-excel"></i>
+                                            }
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-brand text-sm">{file.name}</p>
+                                            <p className="text-[10px] text-brand-light">{(file.size / 1024).toFixed(1)} KB</p>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        onClick={() => {setFile(null); setParsedData([]);}} 
+                                        className="w-10 h-10 rounded-xl bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition-colors"
+                                        title="Remove File"
+                                    >
+                                        <i className="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
+                            ) : null}
                         </div>
+                    </div>
 
-                        <div className="p-8">
-                            {!file ? (
-                                <div className="border-2 border-dashed border-brand-light/30 rounded-2xl p-12 flex flex-col items-center justify-center text-center hover:bg-brand-bg hover:border-brand transition-all cursor-pointer relative group">
+                    <div className="flex-1 bg-white rounded-2xl shadow-sm border border-brand-light/20 overflow-hidden flex flex-col relative">
+                        {!file ? (
+                            <div className="flex-1 flex flex-col items-center justify-center text-center p-12">
+                                <div className="border-2 border-dashed border-brand-light/30 rounded-2xl p-16 flex flex-col items-center justify-center hover:bg-brand-bg hover:border-brand transition-all cursor-pointer relative group max-w-xl w-full">
                                     <input 
                                         type="file" 
                                         accept=".csv, .xlsx, .xls"
                                         onChange={handleFileChange}
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
                                     />
-                                    <div className="w-16 h-16 bg-brand-bg text-brand rounded-full flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-brand group-hover:text-white transition-all shadow-sm">
-                                        <i className="fa-solid fa-cloud-arrow-up text-2xl"></i>
+                                    <div className="w-20 h-20 bg-brand-bg text-brand rounded-full flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-brand group-hover:text-white transition-all shadow-sm">
+                                        <i className="fa-solid fa-cloud-arrow-up text-3xl"></i>
                                     </div>
-                                    <p className="text-lg font-bold text-brand">Click to upload or drag and drop</p>
-                                    <p className="text-sm text-brand-light mt-1">Supports .csv, .xlsx, .xls</p>
+                                    <p className="text-xl font-bold text-brand">Click to upload or drag and drop</p>
+                                    <p className="text-sm text-brand-light mt-2">Supports .csv, .xlsx, .xls</p>
                                 </div>
-                            ) : (
-                                <div className="space-y-6">
-                                    <div className="flex items-center justify-between p-4 bg-brand-info/30 border border-brand-accent/20 rounded-xl">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 bg-white text-brand-accent rounded-lg flex items-center justify-center shadow-sm">
-                                                {file.name.endsWith('csv') 
-                                                    ? <i className="fa-solid fa-file-csv text-xl"></i>
-                                                    : <i className="fa-solid fa-file-excel text-xl"></i>
-                                                }
-                                            </div>
-                                            <div>
-                                                <p className="font-bold text-brand">{file.name}</p>
-                                                <p className="text-xs text-brand-light">{(file.size / 1024).toFixed(1)} KB • {parsedData.length} Rows parsed</p>
-                                            </div>
+                            </div>
+                        ) : (
+                            <>
+                                {error && (
+                                    <div className="p-4 bg-red-50 text-red-600 text-sm flex flex-col gap-1 border-b border-red-100 whitespace-pre-wrap">
+                                        <div className="flex items-center gap-2 font-bold">
+                                            <i className="fa-solid fa-circle-exclamation"></i> Upload Error
                                         </div>
-                                        <button onClick={() => {setFile(null); setParsedData([]);}} className="text-brand-light hover:text-red-500 transition-colors p-2">
-                                            <i className="fa-solid fa-trash"></i>
-                                        </button>
+                                        {error}
                                     </div>
+                                )}
 
-                                    {error && (
-                                        <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm flex flex-col gap-1 border border-red-100 whitespace-pre-wrap">
-                                            <div className="flex items-center gap-2 font-bold">
-                                                <i className="fa-solid fa-circle-exclamation"></i> Upload Error
-                                            </div>
-                                            {error}
-                                        </div>
-                                    )}
-
-                                    {parsedData.length > 0 && (
-                                        <div>
-                                            <div className="flex justify-between items-center mb-2">
+                                {parsedData.length > 0 && (
+                                    <div className="flex-1 flex flex-col overflow-hidden">
+                                        {/* Table Toolbar */}
+                                        <div className="px-6 py-3 border-b border-brand-light/10 bg-brand-surface flex justify-between items-center">
+                                            <div className="flex items-center gap-2">
                                                 <h3 className="font-bold text-brand text-sm uppercase tracking-wide">Data Preview</h3>
-                                                <span className="text-xs bg-brand-bg px-2 py-1 rounded text-brand-light border border-brand-light/10">First 5 rows</span>
+                                                <div className="flex gap-2">
+                                                    <span className="text-xs bg-brand-bg px-2 py-1 rounded text-brand-light border border-brand-light/10 font-mono">
+                                                        <i className="fa-solid fa-list-ol mr-1"></i> {parsedData.length} Rows
+                                                    </span>
+                                                    <span className="text-xs bg-brand-bg px-2 py-1 rounded text-brand-light border border-brand-light/10 font-mono">
+                                                        <i className="fa-solid fa-table-columns mr-1"></i> {allColumns.length} Columns
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <div className="border border-brand-light/20 rounded-xl overflow-hidden shadow-sm">
-                                                <table className="w-full text-left text-sm">
-                                                    <thead className="bg-brand-surface">
-                                                        <tr>
-                                                            <th className="p-3 font-semibold text-brand-light">Article# / Working#</th>
-                                                            <th className="p-3 font-semibold text-brand-light">Model</th>
-                                                            <th className="p-3 font-semibold text-brand-light">Risk</th>
-                                                            <th className="p-3 font-semibold text-brand-light">Factory</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-brand-light/10 bg-white">
-                                                        {parsedData.slice(0, 5).map((row, i) => (
-                                                            <tr key={i}>
-                                                                <td className="p-3 text-brand font-medium">{row['Article#']}</td>
-                                                                <td className="p-3 text-brand-light">{row['Model Name Short']}</td>
-                                                                <td className="p-3"><RiskBadge level={row['CTQ Risk Level']} /></td>
-                                                                <td className="p-3 text-brand-light truncate max-w-[150px]">{row['Development Factory Name']}</td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
+                                            <div className="text-xs text-brand-light italic">
+                                                <i className="fa-solid fa-arrows-left-right mr-1"></i> Scroll to see all columns
                                             </div>
                                         </div>
-                                    )}
 
-                                    <div className="flex justify-end gap-3 pt-6 border-t border-brand-light/10">
-                                        <button onClick={onCancel} className="px-6 py-2.5 text-brand-light font-bold hover:bg-brand-bg rounded-xl transition-colors">
-                                            Cancel
-                                        </button>
-                                        <button 
-                                            onClick={() => onSuccess(parsedData, file.name)}
-                                            disabled={parsedData.length === 0}
-                                            className="px-6 py-2.5 bg-brand text-white font-bold rounded-xl hover:bg-opacity-90 shadow-lg shadow-brand/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                                        >
-                                            Confirm Upload
-                                        </button>
+                                        {/* Scrollable Table Area */}
+                                        <div className="flex-1 overflow-auto relative bg-white">
+                                            <table className="min-w-full text-left text-xs whitespace-nowrap border-collapse">
+                                                <thead className="bg-brand-bg sticky-header shadow-sm">
+                                                    <tr>
+                                                        <th className="p-3 w-12 text-center font-bold text-brand-light border-b border-brand-light/20 bg-brand-bg sticky-corner border-r border-brand-light/10 z-50">#</th>
+                                                        {allColumns.map((col, idx) => (
+                                                            <th key={idx} className="p-3 font-bold text-brand border-b border-brand-light/20 border-r border-brand-light/10 last:border-r-0 bg-brand-bg">
+                                                                {col}
+                                                            </th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-brand-light/10">
+                                                    {parsedData.map((row, rIdx) => (
+                                                        <tr key={rIdx} className="hover:bg-brand-info/10 transition-colors">
+                                                            <td className="p-3 text-center text-brand-light font-mono text-[10px] bg-brand-surface sticky-col border-r border-brand-light/10 shadow-[2px_0_5px_rgba(0,0,0,0.02)]">{rIdx + 1}</td>
+                                                            {allColumns.map((col, cIdx) => (
+                                                                <td key={cIdx} className="p-3 text-brand-light border-r border-brand-light/5 last:border-r-0 max-w-xs truncate" title={String(row[col])}>
+                                                                    {col === 'CTQ Risk Level' ? <RiskBadge level={row[col]} /> : row[col]}
+                                                                </td>
+                                                            ))}
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        {/* Footer Actions */}
+                                        <div className="p-4 border-t border-brand-light/10 bg-brand-surface flex justify-end gap-3 z-20 shadow-[0_-5px_15px_rgba(0,0,0,0.02)]">
+                                            <button onClick={onCancel} className="px-6 py-2.5 text-brand-light font-bold hover:bg-brand-bg rounded-xl transition-colors">
+                                                Cancel
+                                            </button>
+                                            <button 
+                                                onClick={() => onSuccess(parsedData, file.name)}
+                                                className="px-6 py-2.5 bg-brand text-white font-bold rounded-xl hover:bg-opacity-90 shadow-lg shadow-brand/20 transition-all flex items-center gap-2"
+                                            >
+                                                <i className="fa-solid fa-check"></i> Confirm Upload
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            )}
-                        </div>
+                                )}
+                            </>
+                        )}
                     </div>
                 </div>
             );
