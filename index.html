@@ -230,13 +230,13 @@
                 return Object.keys(activeData[0]).filter(k => k !== 'id');
             }, [activeData]);
 
-            // 3. Calculate Stats
+            // 3. Calculate Stats from activeData (Updated logic)
             const stats = useMemo(() => {
                 return {
                     total: activeData.length,
-                    highRisk: activeData.filter(d => d['CTQ Risk Level'] === 'HIGH').length,
-                    factories: new Set(activeData.map(d => d['Development Factory Name'])).size,
-                    seasons: new Set(activeData.map(d => d['Season'])).size
+                    highRisk: activeData.filter(d => (d['CTQ Risk Level'] || '').toUpperCase() === 'HIGH').length,
+                    mediumRisk: activeData.filter(d => (d['CTQ Risk Level'] || '').toUpperCase() === 'MEDIUM').length,
+                    lowRisk: activeData.filter(d => (d['CTQ Risk Level'] || '').toUpperCase() === 'LOW').length
                 }
             }, [activeData]);
 
@@ -291,12 +291,12 @@
                         </div>
                     </div>
 
-                    {/* Stats Cards */}
+                    {/* Stats Cards (Updated Titles & Logic) */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 flex-none">
-                        <StatCard title="Total Articles" value={stats.total} icon="fa-box-open" colorClass="text-brand" bgClass="bg-brand/10" />
-                        <StatCard title="High Risk Items" value={stats.highRisk} icon="fa-triangle-exclamation" colorClass="text-red-600" bgClass="bg-red-100" />
-                        <StatCard title="Active Factories" value={stats.factories} icon="fa-industry" colorClass="text-brand-success" bgClass="bg-brand-success/10" />
-                        <StatCard title="Seasons" value={stats.seasons} icon="fa-calendar-check" colorClass="text-brand-accent" bgClass="bg-brand-accent/10" />
+                        <StatCard title="Total" value={stats.total} icon="fa-list" colorClass="text-brand" bgClass="bg-brand/10" />
+                        <StatCard title="High Risk Level" value={stats.highRisk} icon="fa-triangle-exclamation" colorClass="text-red-600" bgClass="bg-red-100" />
+                        <StatCard title="Medium Risk Level" value={stats.mediumRisk} icon="fa-circle-exclamation" colorClass="text-orange-500" bgClass="bg-orange-100" />
+                        <StatCard title="Low Risk Level" value={stats.lowRisk} icon="fa-check-circle" colorClass="text-green-600" bgClass="bg-green-100" />
                     </div>
 
                     {/* Data Table Panel */}
