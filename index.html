@@ -101,7 +101,8 @@
                 'Durability': 'LOW',
                 'Appearance': 'LOW',
                 'Created By': 'system@admin.com',
-                'Created': new Date().toISOString()
+                'Created': new Date().toISOString(),
+                'Upload Date': new Date().toLocaleString('en-GB') // Add mock upload date
             }));
         };
 
@@ -114,15 +115,22 @@
             // --- Handlers ---
             const handleImportSuccess = (newData, filename) => {
                 const timestamp = new Date().toLocaleString('en-GB');
-                setLatestData(newData);
+                
+                // Add Upload Date to every row in the new dataset
+                const dataWithDate = newData.map(row => ({
+                    ...row,
+                    'Upload Date': timestamp
+                }));
+
+                setLatestData(dataWithDate);
                 setHistoryData([
                     { 
                         version: timestamp, 
                         uploader: 'Current User', 
                         filename: filename,
-                        rows: newData.length, 
+                        rows: dataWithDate.length, 
                         status: 'Success',
-                        data: newData // Save dataset to history
+                        data: dataWithDate 
                     },
                     ...historyData
                 ]);
@@ -225,10 +233,15 @@
                 });
             }, [data]);
 
-            // 2. Identify Columns from data
+            // 2. Identify Columns from data (Force 'Upload Date' to be last, Remove 'Created')
             const columns = useMemo(() => {
                 if (activeData.length === 0) return [];
-                return Object.keys(activeData[0]).filter(k => k !== 'id');
+                // Filter out 'id' and 'Created'
+                const allKeys = Object.keys(activeData[0]).filter(k => k !== 'id' && k !== 'Created');
+                // Remove 'Upload Date' if present in random position
+                const keysWithoutDate = allKeys.filter(k => k !== 'Upload Date');
+                // Add 'Upload Date' at the very end
+                return [...keysWithoutDate, 'Upload Date'];
             }, [activeData]);
 
             // 3. Calculate Stats from activeData (Updated logic)
