@@ -15,21 +15,21 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Tailwind Config -->
+    <!-- Tailwind Config for Custom Colors -->
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
                         brand: {
-                            DEFAULT: '#3B4083',
-                            light: '#8F8CB8',
-                            accent: '#7AB6B5',
-                            bg: '#F8FAFC',
-                            surface: '#FFFFFF',
-                            success: '#0CC784',
-                            warning: '#FFBC5E',
-                            info: '#DBF2F2'
+                            DEFAULT: '#3B4083', // Deep Indigo
+                            light: '#8F8CB8',   // Muted Lavender
+                            accent: '#7AB6B5',  // Muted Teal
+                            bg: '#F8FAFC',      // Clean Slate (Main Background)
+                            surface: '#FFFFFF', // Pure White for cards
+                            success: '#0CC784', // Vibrant Green
+                            warning: '#FFBC5E', // Orange-Yellow
+                            info: '#DBF2F2'     // Pale Cyan
                         }
                     }
                 }
@@ -37,76 +37,40 @@
         }
     </script>
     
-    <!-- External Libraries -->
+    <!-- PapaParse for CSV Reading -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <!-- SheetJS (XLSX) for Excel Reading -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Firebase SDK (Version 11.6.1) -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- 1. ส่วนตั้งค่า FIREBASE (ใส่ค่าของคุณให้แล้วครับ) ---
-        let firebaseConfig = {
-            apiKey: "AIzaSyDNkM-oHPboUcTXoRwU6lfq30CrBxTQLyE",
-            authDomain: "test-ctq.firebaseapp.com",
-            databaseURL: "https://test-ctq-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "test-ctq",
-            storageBucket: "test-ctq.firebasestorage.app",
-            messagingSenderId: "1035789402358",
-            appId: "1:1035789402358:web:0a1ed65f36996ec95fecd7",
-            measurementId: "G-VHHV0LQR5N"
-        };
-
-        // Logic สำหรับการรันในสภาพแวดล้อม Canvas (ไม่ต้องแก้ไขส่วนนี้)
-        if (typeof __firebase_config !== 'undefined') {
-            firebaseConfig = JSON.parse(__firebase_config);
-        }
-
-        // Initialize Firebase
-        try {
-            const app = initializeApp(firebaseConfig);
-            const auth = getAuth(app);
-            const db = getFirestore(app);
-            
-            // App ID logic: Use provided system ID or default to 'ctq-prod' for your Vercel
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'ctq-prod';
-
-            // Expose to window for React
-            window.db = db;
-            window.auth = auth;
-            window.collection = collection;
-            window.addDoc = addDoc;
-            window.onSnapshot = onSnapshot;
-            window.serverTimestamp = serverTimestamp;
-            window.signInAnonymously = signInAnonymously;
-            window.signInWithCustomToken = signInWithCustomToken;
-            window.appId = appId;
-            window.isCanvas = typeof __firebase_config !== 'undefined';
-            window.firebaseInitialized = true;
-        } catch (e) {
-            console.error("Firebase Init Error:", e);
-            window.firebaseInitialized = false;
-        }
-    </script>
 
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; color: #3B4083; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .animate-slide-up { animation: slideUp 0.3s ease-out; }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 10px; height: 10px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 5px; border: 2px solid #fff; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Sticky Column Styles */
         .sticky-col { position: sticky; left: 0; z-index: 20; background-color: #fff; }
         .sticky-header { position: sticky; top: 0; z-index: 30; }
         .sticky-corner { position: sticky; top: 0; left: 0; z-index: 40; }
+        
+        /* Specific Styles for Risk Dashboard Table */
         .dashboard-table th { white-space: nowrap; vertical-align: top; }
         .dashboard-table td { white-space: nowrap; }
+
+        /* Animation for Popups */
         .animate-scale-in { animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         @keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     </style>
@@ -117,151 +81,60 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
 
+        // --- Mock Data Generator ---
+        const generateMockData = (count) => {
+            return Array.from({ length: count }, (_, i) => ({
+                id: i,
+                Status: Math.random() > 0.5 ? 'Add new' : 'Update',
+                'SCPR [Y/N]': 'YES',
+                'CTQ Risk Level': ['LOW', 'MEDIUM', 'HIGH'][Math.floor(Math.random() * 3)],
+                'Article#': `ART-${1000 + i}`,
+                'Model Name Short': `MODEL-${String.fromCharCode(65 + (i%26))}`,
+                'Season': 'FW2026',
+                'Development Factory Name': 'THONG THAI TEXTILE COMPANY',
+                'Retail Intro Date (RID)': '2026-06-01',
+                'Division': 'APP',
+                'Sport Category': Math.random() > 0.5 ? 'TENNIS' : 'GOLF',
+                'External Compliance': 'LOW',
+                'Safety': 'LOW', 
+                'Function': 'LOW',
+                'Durability': 'LOW',
+                'Appearance': 'LOW',
+                'Created By': 'system@admin.com',
+                'Created': new Date().toISOString(),
+                'Upload Date': new Date().toLocaleString('en-GB') // Add mock upload date
+            }));
+        };
+
         const App = () => {
             const [currentTab, setCurrentTab] = useState('overview');
-            const [user, setUser] = useState(null);
-            
-            // Data States
+            const [latestData, setLatestData] = useState(generateMockData(5));
             const [historyData, setHistoryData] = useState([]);
             const [isImporting, setIsImporting] = useState(false);
-            const [isLoading, setIsLoading] = useState(true);
-            const [isOfflineMode, setIsOfflineMode] = useState(false);
-
-            // --- Firebase Authentication & Data Sync ---
-            useEffect(() => {
-                if (!window.firebaseInitialized) {
-                    setIsLoading(false);
-                    setIsOfflineMode(true);
-                    return;
-                }
-
-                // Safety Timeout: If loading takes more than 5 seconds, force stop loading
-                const safetyTimer = setTimeout(() => {
-                    if (isLoading) {
-                        console.warn("Connection timeout. Switching to offline mode.");
-                        setIsLoading(false);
-                        setIsOfflineMode(true);
-                    }
-                }, 5000);
-
-                const init = async () => {
-                    try {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await window.signInWithCustomToken(window.auth, __initial_auth_token);
-                        } else {
-                            await window.signInAnonymously(window.auth);
-                        }
-                    } catch (err) {
-                        console.error("Auth failed:", err);
-                        setIsLoading(false);
-                        setIsOfflineMode(true);
-                    }
-                };
-                init();
-
-                // Auth Listener
-                const unsubscribeAuth = window.auth.onAuthStateChanged(u => {
-                    setUser(u);
-                    if (!u) {
-                        // If no user returned (e.g. error), eventually timeout will handle it, 
-                        // or we can set offline here if we want strict auth.
-                    }
-                });
-                return () => {
-                    unsubscribeAuth();
-                    clearTimeout(safetyTimer);
-                };
-            }, []);
-
-            // Data Listener (Realtime)
-            useEffect(() => {
-                if (!user) return;
-
-                // Determine collection path based on environment
-                let colRef;
-                try {
-                    if (window.isCanvas) {
-                        colRef = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'uploads');
-                    } else {
-                        colRef = window.collection(window.db, 'uploads');
-                    }
-
-                    const unsubscribeData = window.onSnapshot(colRef, (snapshot) => {
-                        const docs = snapshot.docs.map(doc => ({
-                            id: doc.id,
-                            ...doc.data()
-                        }));
-                        
-                        // Sort in memory: Newest first
-                        docs.sort((a, b) => {
-                            const dateA = a.createdAt ? a.createdAt.seconds : 0;
-                            const dateB = b.createdAt ? b.createdAt.seconds : 0;
-                            return dateB - dateA;
-                        });
-
-                        setHistoryData(docs);
-                        setIsLoading(false); // Data loaded successfully
-                        setIsOfflineMode(false);
-                    }, (error) => {
-                        console.error("Data sync error:", error);
-                        setIsLoading(false);
-                        setIsOfflineMode(true);
-                    });
-
-                    return () => unsubscribeData();
-                } catch (err) {
-                    console.error("Firestore Error:", err);
-                    setIsLoading(false);
-                    setIsOfflineMode(true);
-                }
-            }, [user]);
-
-            // Latest Data is simply the first item in the sorted history
-            const latestData = historyData.length > 0 ? historyData[0].data : [];
 
             // --- Handlers ---
-            const handleImportSuccess = async (newData, filename) => {
-                const timestamp = new Date();
-                const versionStr = timestamp.toLocaleString('en-GB');
+            const handleImportSuccess = (newData, filename) => {
+                const timestamp = new Date().toLocaleString('en-GB');
                 
-                // Add Upload Date to every row
+                // Add Upload Date to every row in the new dataset
                 const dataWithDate = newData.map(row => ({
                     ...row,
-                    'Upload Date': versionStr
+                    'Upload Date': timestamp
                 }));
 
-                const newRecord = {
-                    version: versionStr,
-                    uploader: 'User ' + (user?.uid?.substr(0, 4) || 'Local'),
-                    filename: filename,
-                    rows: dataWithDate.length,
-                    status: 'Success',
-                    data: dataWithDate,
-                    createdAt: window.serverTimestamp ? window.serverTimestamp() : new Date()
-                };
-
-                if (isOfflineMode) {
-                    // Offline handling: Add to local state only
-                    setHistoryData([newRecord, ...historyData]);
-                    setIsImporting(false);
-                    alert("Saved locally (Offline Mode). Data will not sync to other users.");
-                } else {
-                    // Save to Firestore
-                    try {
-                        let colRef;
-                        if (window.isCanvas) {
-                            colRef = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'uploads');
-                        } else {
-                            colRef = window.collection(window.db, 'uploads');
-                        }
-                        await window.addDoc(colRef, newRecord);
-                        setIsImporting(false);
-                    } catch (err) {
-                        alert("Failed to save to database: " + err.message + "\n\nSaving locally instead.");
-                        setHistoryData([newRecord, ...historyData]);
-                        setIsImporting(false);
-                    }
-                }
+                setLatestData(dataWithDate);
+                setHistoryData([
+                    { 
+                        version: timestamp, 
+                        uploader: 'Current User', 
+                        filename: filename,
+                        rows: dataWithDate.length, 
+                        status: 'Success',
+                        data: dataWithDate 
+                    },
+                    ...historyData
+                ]);
+                setIsImporting(false);
             };
 
             return (
@@ -297,12 +170,12 @@
 
                         <div className="p-4 bg-black/20 m-4 rounded-xl border border-white/5 backdrop-blur-sm">
                             <div className="flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${!isOfflineMode && user ? 'from-green-400 to-emerald-600' : 'from-gray-400 to-gray-600'} flex items-center justify-center text-xs font-bold text-white shadow-lg border-2 border-white/20`}>
-                                    {!isOfflineMode && user ? 'ON' : 'OFF'}
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-accent to-brand flex items-center justify-center text-xs font-bold text-white shadow-lg border-2 border-white/20">
+                                    US
                                 </div>
                                 <div>
-                                    <p className="text-sm font-medium text-white">{!isOfflineMode && user ? 'Online Mode' : 'Offline Mode'}</p>
-                                    <p className="text-xs text-brand-light">{!isOfflineMode && user ? 'Database Connected' : 'Local Only'}</p>
+                                    <p className="text-sm font-medium text-white">User Admin</p>
+                                    <p className="text-xs text-brand-light">Quality Dept.</p>
                                 </div>
                             </div>
                         </div>
@@ -310,32 +183,22 @@
 
                     {/* Main Content */}
                     <main className="flex-1 overflow-y-auto relative custom-scrollbar">
-                        {isLoading ? (
-                            <div className="flex h-full items-center justify-center flex-col gap-4 text-brand-light">
-                                <div className="w-10 h-10 border-4 border-brand-light/30 border-t-brand rounded-full animate-spin"></div>
-                                <p>Connecting to database...</p>
-                                <p className="text-xs opacity-70">(Entering offline mode in 5s if failed)</p>
-                            </div>
-                        ) : (
-                            <>
-                                {currentTab === 'overview' && (
-                                    !isImporting ? (
-                                        <OverviewView 
-                                            data={latestData} 
-                                            onImportClick={() => setIsImporting(true)} 
-                                        />
-                                    ) : (
-                                        <ImportView 
-                                            onSuccess={handleImportSuccess}
-                                            onCancel={() => setIsImporting(false)}
-                                        />
-                                    )
-                                )}
+                        {currentTab === 'overview' && (
+                            !isImporting ? (
+                                <OverviewView 
+                                    data={latestData} 
+                                    onImportClick={() => setIsImporting(true)} 
+                                />
+                            ) : (
+                                <ImportView 
+                                    onSuccess={handleImportSuccess}
+                                    onCancel={() => setIsImporting(false)}
+                                />
+                            )
+                        )}
 
-                                {currentTab === 'history' && (
-                                    <HistoryView data={historyData} />
-                                )}
-                            </>
+                        {currentTab === 'history' && (
+                            <HistoryView data={historyData} />
                         )}
                     </main>
                 </div>
@@ -358,12 +221,12 @@
 
         // --- Overview View ---
         const OverviewView = ({ data, onImportClick }) => {
+            const [filterText, setFilterText] = useState(''); // Keeping state for future but not showing input
             const [columnFilters, setColumnFilters] = useState({});
             const [selectedRow, setSelectedRow] = useState(null);
 
             // 1. Filter out "Remove" status FIRST (Only for Dashboard)
             const activeData = useMemo(() => {
-                if (!data) return [];
                 return data.filter(row => {
                     const status = row['Status'] || '';
                     return status.trim().toLowerCase() !== 'remove';
@@ -374,7 +237,7 @@
             const columns = useMemo(() => {
                 if (activeData.length === 0) return [];
                 // Filter out 'id' and 'Created'
-                const allKeys = Object.keys(activeData[0]).filter(k => k !== 'id' && k !== 'Created' && k !== 'Created By');
+                const allKeys = Object.keys(activeData[0]).filter(k => k !== 'id' && k !== 'Created');
                 // Remove 'Upload Date' if present in random position
                 const keysWithoutDate = allKeys.filter(k => k !== 'Upload Date');
                 // Add 'Upload Date' at the very end
@@ -391,14 +254,18 @@
                 }
             }, [activeData]);
 
-            // 4. Apply Filters
+            // 4. Apply Global Search (if set programmatically) + Column Filters
             const filteredData = activeData.filter(item => {
+                const searchStr = filterText.toLowerCase();
+                const matchesGlobal = Object.values(item).some(val => 
+                    String(val).toLowerCase().includes(searchStr)
+                );
                 const matchesColumns = Object.keys(columnFilters).every(colKey => {
                     const filterVal = columnFilters[colKey]?.toLowerCase() || '';
                     if (!filterVal) return true;
                     return String(item[colKey] || '').toLowerCase().includes(filterVal);
                 });
-                return matchesColumns;
+                return matchesGlobal && matchesColumns;
             });
 
             // Export to CSV Function
@@ -440,7 +307,7 @@
 
                     {/* Stats Cards (Updated Titles & Logic) */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 flex-none">
-                        <StatCard title="Total" value={stats.total} icon="fa-list" colorClass="text-brand" bgClass="bg-brand/10" />
+                        <StatCard title="Total Lists" value={stats.total} icon="fa-list" colorClass="text-brand" bgClass="bg-brand/10" />
                         <StatCard title="High Risk Level" value={stats.highRisk} icon="fa-triangle-exclamation" colorClass="text-red-600" bgClass="bg-red-100" />
                         <StatCard title="Medium Risk Level" value={stats.mediumRisk} icon="fa-circle-exclamation" colorClass="text-orange-500" bgClass="bg-orange-100" />
                         <StatCard title="Low Risk Level" value={stats.lowRisk} icon="fa-check-circle" colorClass="text-green-600" bgClass="bg-green-100" />
@@ -449,61 +316,70 @@
                     {/* Data Table Panel */}
                     <div className="bg-white rounded-2xl shadow-sm border border-brand-light/20 flex flex-col flex-1 overflow-hidden">
                         
+                        {/* Note: Global Search Toolbar Removed as requested */}
+
                         {/* Table */}
                         <div className="flex-1 overflow-auto bg-white relative">
-                            {filteredData.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center h-full text-brand-light opacity-60 p-10">
-                                    <i className="fa-solid fa-database text-4xl mb-3"></i>
-                                    <p>No data available. Please import a file.</p>
-                                </div>
-                            ) : (
-                                <table className="w-full text-left border-collapse dashboard-table">
-                                    <thead className="bg-brand-bg sticky-header shadow-sm z-30">
-                                        <tr>
-                                            {columns.map((col, idx) => (
-                                                <th key={idx} className="px-6 py-4 text-xs font-bold text-brand uppercase tracking-wider border-b border-brand-light/10 bg-brand-bg border-r border-brand-light/5 min-w-[200px]">
-                                                    <div className="flex flex-col gap-2">
-                                                        <span>{col}</span>
-                                                        <input 
-                                                            type="text" 
-                                                            placeholder={`Filter ${col}...`}
-                                                            className="w-full px-2 py-1.5 text-[11px] font-normal text-brand border border-brand-light/30 rounded focus:outline-none focus:border-brand bg-white/50 focus:bg-white transition-all placeholder-brand-light/70"
-                                                            value={columnFilters[col] || ''}
-                                                            onChange={(e) => setColumnFilters({...columnFilters, [col]: e.target.value})}
-                                                            onClick={(e) => e.stopPropagation()} 
-                                                        />
-                                                    </div>
-                                                </th>
+                            <table className="w-full text-left border-collapse dashboard-table">
+                                <thead className="bg-brand-bg sticky-header shadow-sm z-30">
+                                    <tr>
+                                        {/* Dynamic Columns Header with Filter Inputs */}
+                                        {columns.map((col, idx) => (
+                                            <th key={idx} className="px-6 py-4 text-xs font-bold text-brand uppercase tracking-wider border-b border-brand-light/10 bg-brand-bg border-r border-brand-light/5 min-w-[200px]">
+                                                <div className="flex flex-col gap-2">
+                                                    <span>{col}</span>
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder={`Filter ${col}...`}
+                                                        className="w-full px-2 py-1.5 text-[11px] font-normal text-brand border border-brand-light/30 rounded focus:outline-none focus:border-brand bg-white/50 focus:bg-white transition-all placeholder-brand-light/70"
+                                                        value={columnFilters[col] || ''}
+                                                        onChange={(e) => setColumnFilters({...columnFilters, [col]: e.target.value})}
+                                                        onClick={(e) => e.stopPropagation()} 
+                                                    />
+                                                </div>
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-brand-light/10">
+                                    {filteredData.length > 0 ? filteredData.map((row, idx) => (
+                                        <tr 
+                                            key={idx} 
+                                            className="hover:bg-brand-info/30 transition-colors group cursor-pointer"
+                                            onClick={() => setSelectedRow(row)} 
+                                        >
+                                            {/* Dynamic Data Cells */}
+                                            {columns.map((col, cIdx) => (
+                                                <td key={cIdx} className="px-6 py-3 whitespace-nowrap text-sm text-brand-light max-w-xs truncate border-r border-brand-light/5 last:border-r-0" title={String(row[col])}>
+                                                    {col === 'CTQ Risk Level' ? <RiskBadge level={row[col]} /> : 
+                                                     col === 'Status' ? 
+                                                        <span className={`inline-flex px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide border ${
+                                                            row['Status'] === 'Add new' 
+                                                            ? 'bg-brand/5 text-brand border-brand/20' 
+                                                            : 'bg-brand-warning/10 text-orange-600 border-brand-warning/20'
+                                                        }`}>{row[col]}</span>
+                                                     : row[col]}
+                                                </td>
                                             ))}
                                         </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-brand-light/10">
-                                        {filteredData.map((row, idx) => (
-                                            <tr 
-                                                key={idx} 
-                                                className="hover:bg-brand-info/30 transition-colors group cursor-pointer"
-                                                onClick={() => setSelectedRow(row)} 
-                                            >
-                                                {columns.map((col, cIdx) => (
-                                                    <td key={cIdx} className="px-6 py-3 whitespace-nowrap text-sm text-brand-light max-w-xs truncate border-r border-brand-light/5 last:border-r-0" title={String(row[col])}>
-                                                        {col === 'CTQ Risk Level' ? <RiskBadge level={row[col]} /> : 
-                                                        col === 'Status' ? 
-                                                            <span className={`inline-flex px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide border ${
-                                                                row['Status'] === 'Add new' 
-                                                                ? 'bg-brand/5 text-brand border-brand/20' 
-                                                                : 'bg-brand-warning/10 text-orange-600 border-brand-warning/20'
-                                                            }`}>{row[col]}</span>
-                                                        : row[col]}
-                                                    </td>
-                                                ))}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
+                                    )) : (
+                                        <tr>
+                                            <td colSpan={columns.length} className="px-6 py-20 text-center text-brand-light">
+                                                <div className="flex flex-col items-center gap-3 opacity-60">
+                                                    <div className="w-16 h-16 bg-brand-bg rounded-full flex items-center justify-center">
+                                                        <i className="fa-solid fa-inbox text-2xl text-brand-light"></i>
+                                                    </div>
+                                                    <p>No data found matching your filters.</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
+                    {/* Detail Modal */}
                     {selectedRow && (
                         <DetailModal row={selectedRow} onClose={() => setSelectedRow(null)} />
                     )}
