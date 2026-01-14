@@ -67,24 +67,30 @@
         }
 
         // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        
-        // App ID logic: Use provided system ID or default to 'ctq-prod' for your Vercel
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'ctq-prod';
+        try {
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            const db = getFirestore(app);
+            
+            // App ID logic: Use provided system ID or default to 'ctq-prod' for your Vercel
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'ctq-prod';
 
-        // Expose to window for React
-        window.db = db;
-        window.auth = auth;
-        window.collection = collection;
-        window.addDoc = addDoc;
-        window.onSnapshot = onSnapshot;
-        window.serverTimestamp = serverTimestamp;
-        window.signInAnonymously = signInAnonymously;
-        window.signInWithCustomToken = signInWithCustomToken;
-        window.appId = appId;
-        window.isCanvas = typeof __firebase_config !== 'undefined';
+            // Expose to window for React
+            window.db = db;
+            window.auth = auth;
+            window.collection = collection;
+            window.addDoc = addDoc;
+            window.onSnapshot = onSnapshot;
+            window.serverTimestamp = serverTimestamp;
+            window.signInAnonymously = signInAnonymously;
+            window.signInWithCustomToken = signInWithCustomToken;
+            window.appId = appId;
+            window.isCanvas = typeof __firebase_config !== 'undefined';
+            window.firebaseInitialized = true;
+        } catch (e) {
+            console.error("Firebase Init Error:", e);
+            window.firebaseInitialized = false;
+        }
     </script>
 
     <style>
@@ -119,9 +125,25 @@
             const [historyData, setHistoryData] = useState([]);
             const [isImporting, setIsImporting] = useState(false);
             const [isLoading, setIsLoading] = useState(true);
+            const [isOfflineMode, setIsOfflineMode] = useState(false);
 
             // --- Firebase Authentication & Data Sync ---
             useEffect(() => {
+                if (!window.firebaseInitialized) {
+                    setIsLoading(false);
+                    setIsOfflineMode(true);
+                    return;
+                }
+
+                // Safety Timeout: If loading takes more than 5 seconds, force stop loading
+                const safetyTimer = setTimeout(() => {
+                    if (isLoading) {
+                        console.warn("Connection timeout. Switching to offline mode.");
+                        setIsLoading(false);
+                        setIsOfflineMode(true);
+                    }
+                }, 5000);
+
                 const init = async () => {
                     try {
                         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -131,6 +153,8 @@
                         }
                     } catch (err) {
                         console.error("Auth failed:", err);
+                        setIsLoading(false);
+                        setIsOfflineMode(true);
                     }
                 };
                 init();
@@ -138,8 +162,15 @@
                 // Auth Listener
                 const unsubscribeAuth = window.auth.onAuthStateChanged(u => {
                     setUser(u);
+                    if (!u) {
+                        // If no user returned (e.g. error), eventually timeout will handle it, 
+                        // or we can set offline here if we want strict auth.
+                    }
                 });
-                return () => unsubscribeAuth();
+                return () => {
+                    unsubscribeAuth();
+                    clearTimeout(safetyTimer);
+                };
             }, []);
 
             // Data Listener (Realtime)
@@ -147,35 +178,42 @@
                 if (!user) return;
 
                 // Determine collection path based on environment
-                // If Canvas: strict path. If Vercel/Prod: root path 'uploads'
                 let colRef;
-                if (window.isCanvas) {
-                    colRef = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'uploads');
-                } else {
-                    colRef = window.collection(window.db, 'uploads');
-                }
+                try {
+                    if (window.isCanvas) {
+                        colRef = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'uploads');
+                    } else {
+                        colRef = window.collection(window.db, 'uploads');
+                    }
 
-                const unsubscribeData = window.onSnapshot(colRef, (snapshot) => {
-                    const docs = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
-                    
-                    // Sort in memory: Newest first
-                    docs.sort((a, b) => {
-                        const dateA = a.createdAt ? a.createdAt.seconds : 0;
-                        const dateB = b.createdAt ? b.createdAt.seconds : 0;
-                        return dateB - dateA;
+                    const unsubscribeData = window.onSnapshot(colRef, (snapshot) => {
+                        const docs = snapshot.docs.map(doc => ({
+                            id: doc.id,
+                            ...doc.data()
+                        }));
+                        
+                        // Sort in memory: Newest first
+                        docs.sort((a, b) => {
+                            const dateA = a.createdAt ? a.createdAt.seconds : 0;
+                            const dateB = b.createdAt ? b.createdAt.seconds : 0;
+                            return dateB - dateA;
+                        });
+
+                        setHistoryData(docs);
+                        setIsLoading(false); // Data loaded successfully
+                        setIsOfflineMode(false);
+                    }, (error) => {
+                        console.error("Data sync error:", error);
+                        setIsLoading(false);
+                        setIsOfflineMode(true);
                     });
 
-                    setHistoryData(docs);
+                    return () => unsubscribeData();
+                } catch (err) {
+                    console.error("Firestore Error:", err);
                     setIsLoading(false);
-                }, (error) => {
-                    console.error("Data sync error:", error);
-                    setIsLoading(false);
-                });
-
-                return () => unsubscribeData();
+                    setIsOfflineMode(true);
+                }
             }, [user]);
 
             // Latest Data is simply the first item in the sorted history
@@ -194,26 +232,35 @@
 
                 const newRecord = {
                     version: versionStr,
-                    uploader: 'User ' + (user?.uid?.substr(0, 4) || 'Anon'),
+                    uploader: 'User ' + (user?.uid?.substr(0, 4) || 'Local'),
                     filename: filename,
                     rows: dataWithDate.length,
                     status: 'Success',
                     data: dataWithDate,
-                    createdAt: window.serverTimestamp()
+                    createdAt: window.serverTimestamp ? window.serverTimestamp() : new Date()
                 };
 
-                // Save to Firestore
-                try {
-                    let colRef;
-                    if (window.isCanvas) {
-                        colRef = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'uploads');
-                    } else {
-                        colRef = window.collection(window.db, 'uploads');
-                    }
-                    await window.addDoc(colRef, newRecord);
+                if (isOfflineMode) {
+                    // Offline handling: Add to local state only
+                    setHistoryData([newRecord, ...historyData]);
                     setIsImporting(false);
-                } catch (err) {
-                    alert("Failed to save to database: " + err.message + "\n\n(Please check if Firestore is enabled in Test Mode in Firebase Console)");
+                    alert("Saved locally (Offline Mode). Data will not sync to other users.");
+                } else {
+                    // Save to Firestore
+                    try {
+                        let colRef;
+                        if (window.isCanvas) {
+                            colRef = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'uploads');
+                        } else {
+                            colRef = window.collection(window.db, 'uploads');
+                        }
+                        await window.addDoc(colRef, newRecord);
+                        setIsImporting(false);
+                    } catch (err) {
+                        alert("Failed to save to database: " + err.message + "\n\nSaving locally instead.");
+                        setHistoryData([newRecord, ...historyData]);
+                        setIsImporting(false);
+                    }
                 }
             };
 
@@ -250,12 +297,12 @@
 
                         <div className="p-4 bg-black/20 m-4 rounded-xl border border-white/5 backdrop-blur-sm">
                             <div className="flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${user ? 'from-green-400 to-emerald-600' : 'from-gray-400 to-gray-600'} flex items-center justify-center text-xs font-bold text-white shadow-lg border-2 border-white/20`}>
-                                    {user ? 'ON' : 'OFF'}
+                                <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${!isOfflineMode && user ? 'from-green-400 to-emerald-600' : 'from-gray-400 to-gray-600'} flex items-center justify-center text-xs font-bold text-white shadow-lg border-2 border-white/20`}>
+                                    {!isOfflineMode && user ? 'ON' : 'OFF'}
                                 </div>
                                 <div>
-                                    <p className="text-sm font-medium text-white">{user ? 'Online Mode' : 'Connecting...'}</p>
-                                    <p className="text-xs text-brand-light">Database Connected</p>
+                                    <p className="text-sm font-medium text-white">{!isOfflineMode && user ? 'Online Mode' : 'Offline Mode'}</p>
+                                    <p className="text-xs text-brand-light">{!isOfflineMode && user ? 'Database Connected' : 'Local Only'}</p>
                                 </div>
                             </div>
                         </div>
@@ -266,7 +313,8 @@
                         {isLoading ? (
                             <div className="flex h-full items-center justify-center flex-col gap-4 text-brand-light">
                                 <div className="w-10 h-10 border-4 border-brand-light/30 border-t-brand rounded-full animate-spin"></div>
-                                <p>Syncing data from Cloud...</p>
+                                <p>Connecting to database...</p>
+                                <p className="text-xs opacity-70">(Entering offline mode in 5s if failed)</p>
                             </div>
                         ) : (
                             <>
@@ -549,6 +597,7 @@
                 const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
                 const link = document.createElement("a");
                 const url = URL.createObjectURL(blob);
+                // Create a filename based on original filename and version timestamp
                 const safeFilename = (historyItem.filename || 'export').replace(/\.[^/.]+$/, "");
                 const safeVersion = (historyItem.version || '').replace(/[\/:\s]/g, '-');
                 
